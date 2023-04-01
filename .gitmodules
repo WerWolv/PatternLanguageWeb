@@ -1,0 +1,3 @@
+[submodule "wasm/external/pattern_language"]
+	path = wasm/external/pattern_language
+	url = https://github.com/WerWolv/PatternLanguage

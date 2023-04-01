@@ -1,0 +1,29 @@
+html, body, #app {
+  height: 100%
+}
+
+.console {
+  background-color: #1a1a1a;
+  overflow: auto;
+  font-family: monospace;
+}
+
+.console>.error {
+  color: #B04040;
+}
+
+.console>.debug {
+  color: #4f9a4f;
+}
+
+.console>.warning {
+  color: #B0B040;
+}
+
+.console>.info {
+  color: #62b3dc;
+}
+
+p {
+    margin: 0;
+}
