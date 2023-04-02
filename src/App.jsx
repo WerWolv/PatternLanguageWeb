@@ -262,7 +262,7 @@ function App() {
 
         codeEditor = monaco.editor.create(document.getElementById('editorContainer'), {
             theme: 'vs-dark',
-            value: window.localStorage.getItem('code'),
+            value: window.localStorage.getItem('code') || '// Enter your Pattern Language code here\n\n// Afterwards select a binary file to parse below using the "Load File"\n// and hit "Execute" to turn run the pattern.',
             language: 'pattern_language',
             automaticLayout: true
         });
