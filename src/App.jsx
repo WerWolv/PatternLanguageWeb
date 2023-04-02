@@ -1,6 +1,4 @@
 import { useEffect } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 
 import * as monaco from 'monaco-editor'
@@ -11,7 +9,12 @@ import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 
 import Module from 'plwasm/plwasm.js'
-const PatternLanguage = await Module();
+
+
+let PatternLanguage;
+Module({
+    locateFile: (file) => `wasm/build/${file}`,
+}).then((module) => { PatternLanguage = module; });
 
 function executePatternLanguageCode(code) {
     let result = PatternLanguage._executePatternLanguageCode(PatternLanguage.allocateUTF8(code));

@@ -9,7 +9,8 @@ extern "C" const char *executePatternLanguageCode(const char *string) {
     });
 
     runtime.setIncludePaths({
-       "./patterns"
+       "/sources/includes",
+       "/sources/patterns"
     });
 
     // Execute pattern file

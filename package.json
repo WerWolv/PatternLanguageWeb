@@ -7,7 +7,7 @@
     "dev": "vite",
     "build:app": "vite build",
     "build:wasm": "docker run --rm -v %cd%:/src emscripten/emsdk ./wasm/build_wasm.sh",
-    "build": "npm run build:app && npm run build:wasm",
+    "build": "npm run build:wasm && npm install && npm run build:app",
     "preview": "vite preview"
   },
   "dependencies": {
