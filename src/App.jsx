@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import './App.css'
 
 import * as monaco from 'monaco-editor'
@@ -14,8 +14,6 @@ import Module from 'plwasm/plwasm.js'
 let PatternLanguage;
 let codeEditor;
 let resultEditor;
-
-let loadedFile;
 
 Module().then((module) => {
     PatternLanguage = module;

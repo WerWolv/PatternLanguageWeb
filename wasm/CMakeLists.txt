@@ -33,7 +33,8 @@ target_link_options(plwasm.js PRIVATE
         -sTOTAL_MEMORY=33554432
         -sALLOW_MEMORY_GROWTH=1
         -sFORCE_FILESYSTEM=1
-        --embed-file ${imhex_patterns_SOURCE_DIR}@/sources
+        --embed-file=${imhex_patterns_SOURCE_DIR}/includes@/sources/includes
+        --embed-file=${imhex_patterns_SOURCE_DIR}/patterns@/sources/patterns
 )
 
 install(CODE "execute_process(COMMAND npm init -y)")
