@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import './App.css'
 
 import * as monaco from 'monaco-editor'
@@ -12,14 +12,52 @@ import Module from 'plwasm/plwasm.js'
 
 
 let PatternLanguage;
-Module({
-    locateFile: (file) => `wasm/build/${file}`,
-}).then((module) => { PatternLanguage = module; });
+let codeEditor;
+let resultEditor;
+
+let loadedFile;
+
+Module().then((module) => {
+    PatternLanguage = module;
+    PatternLanguage._initialize();
+});
+
+function loadLocalFile() {
+    let input = document.getElementById('input');
+    let fileLabel = document.getElementById('fileLabel');
+
+    input.onchange = e => {
+        // getting a hold of the file reference
+        let file = e.target.files[0];
+
+        // setting up the reader
+        let reader = new FileReader();
+
+        reader.readAsArrayBuffer(file);
+        fileLabel.innerText = file.name;
+
+        // here we tell the reader what to do when it's done reading...
+        reader.onload = readerEvent => {
+            const uint8Arr = new Uint8Array(readerEvent.target.result);
+            const num_bytes = uint8Arr.length * uint8Arr.BYTES_PER_ELEMENT;
+            const data_ptr = PatternLanguage._malloc(num_bytes);
+            const data_on_heap = new Uint8Array(PatternLanguage.HEAPU8.buffer, data_ptr, num_bytes);
+            data_on_heap.set(uint8Arr);
+            PatternLanguage._setData(data_on_heap.byteOffset, uint8Arr.length);
+            PatternLanguage._free(data_ptr);
+        }
+    };
+
+    input.click();
+}
 
 function executePatternLanguageCode(code) {
-    let result = PatternLanguage._executePatternLanguageCode(PatternLanguage.allocateUTF8(code));
+    PatternLanguage._executePatternLanguageCode(PatternLanguage.allocateUTF8(code));
 
-    return PatternLanguage.UTF8ToString(result);
+    return [
+        PatternLanguage.UTF8ToString(PatternLanguage._getConsoleResult()),
+        PatternLanguage.UTF8ToString(PatternLanguage._getFormattedResult(PatternLanguage.allocateUTF8("json")))
+    ];
 }
 
 function printToConsole(text, level) {
@@ -50,19 +88,19 @@ function getLogLevel(line) {
 }
 
 function execute() {
-    const code = editor.getValue();
+    const code = codeEditor.getValue();
     clearConsole();
 
     window.localStorage.setItem('code', code);
 
     let result = executePatternLanguageCode(code);
 
-    for (let line of result.split('\n')) {
-        printToConsole(line, getLogLevel(line));
+    for (let line of result[0].split('\n\xAA')) {
+        printToConsole(line.substring(0, line.length - 1), getLogLevel(line));
     }
-}
 
-var editor;
+    resultEditor.getModel().setValue(result[1]);
+}
 
 function App() {
     var createdEditor = false;
@@ -98,7 +136,9 @@ function App() {
                     "namespace",
                     "padding",
                     "while",
-                    "for"
+                    "for",
+                    "if",
+                    "else"
                 ],
 
                 typeKeywords: [
@@ -108,7 +148,7 @@ function App() {
                 ],
 
                 operators: [
-                    '=', '>', '<', '!', '~', '?', ':',
+                    '=', '>', '<', '!', '~', '?', ':', '@',
                     '==', '<=', '>=', '!=', '&&', '||', '++', '--',
                     '+', '-', '*', '/', '&', '|', '^', '%', '<<',
                     '>>', '+=', '-=', '*=', '/=', '&=', '|=',
@@ -116,21 +156,21 @@ function App() {
                 ],
 
                 // we include these common regular expressions
-                symbols: /[=><!~?:&|+\-*\/^%]+/,
+                symbols: /[=><!~?:&|+@$\-*\/^%]+/,
                 escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
 
                 // The main tokenizer for our languages
                 tokenizer: {
                     root: [
                         // identifiers and keywords
-                        [/[a-z_$][\w$]*/, {
+                        [/[a-zA-Z_$][\w$]*/, {
                             cases: {
                                 '@typeKeywords': 'keyword',
                                 '@keywords': 'keyword',
                                 '@default': 'identifier'
                             }
                         }],
-                        [/[A-Z][\w$]*/, 'type.identifier'],  // to show class names nicely
+                        [/[a-zA-Z][\w$]*/, 'type.identifier'],  // to show class names nicely
 
                         // whitespace
                         {include: '@whitespace'},
@@ -146,10 +186,10 @@ function App() {
                         }],
 
                         // Inclusion
-                        [/^\s*#\s*include/, { token: 'keyword.directive.include', next: '@include' }],
+                        [/\s*#\s*include/, { token: 'keyword.directive.include', next: '@include' }],
 
                         // Preprocessor directive
-                        [/^\s*#\s*\w+/, 'keyword.directive'],
+                        [/\s*#\s*\w+/, 'keyword.directive'],
 
                         // numbers
                         [/\d*\.\d+([eE][\-+]?\d+)?[fFdD]?/, 'number.float'],
@@ -222,11 +262,19 @@ function App() {
         });
         monaco.languages.setMonarchTokensProvider('pattern_language', definition());
 
-        editor = monaco.editor.create(document.getElementById('container'), {
+        codeEditor = monaco.editor.create(document.getElementById('editorContainer'), {
             theme: 'vs-dark',
             value: window.localStorage.getItem('code'),
             language: 'pattern_language',
             automaticLayout: true
+        });
+
+        resultEditor = monaco.editor.create(document.getElementById('resultContainer'), {
+            theme: 'vs-dark',
+            value: "",
+            language: 'json',
+            automaticLayout: true,
+            readOnly: true
         });
 
         self.MonacoEnvironment = {
@@ -248,14 +296,20 @@ function App() {
         }
     }, []);
 
-
-
   return (
       <div className="App">
-          <div style={{ height: '80vh', width: '100vw' }} id={'container'}></div>
-          <div style={{ height: '15vh', width: '100vw' }} className={'console'} id={'console'}></div>
-          <div style={{ height: '5vh', width: '100vw' }} className={'buttons'}>
+          <div style={{ display: "flex", flexDirection: "row" }}>
+              <div>
+                <div style={{ height: '75vh', width: '60vw' }} id={'editorContainer'}></div>
+                <div style={{ height: '20vh', width: '60vw' }} className={'console'} id={'console'}></div>
+              </div>
+            <div style={{ height: '95vh', width: '40vw' }} id={'resultContainer'}></div>
+          </div>
+          <div style={{ height: '5vh', width: '100vw',  display: "flex", flexDirection: "row" }} className={'buttons'}>
               <button onClick={execute}>Execute</button>
+              <button onClick={loadLocalFile}>Load File</button>
+              <label id={'fileLabel'}>No file selected</label>
+              <input type="file" id="input" style={{ display: "none" }}/>
           </div>
       </div>
   )

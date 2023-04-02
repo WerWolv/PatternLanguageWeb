@@ -1,9 +1,11 @@
 html, body, #app {
-  height: 100%
+  height: 100%;
+  overflow: hidden;
 }
 
 .console {
-  background-color: #1a1a1a;
+  background-color: #080808;
+  border: solid 1px #808080;
   overflow: auto;
   font-family: monospace;
 }
@@ -26,4 +28,10 @@ html, body, #app {
 
 p {
     margin: 0;
+}
+
+#fileLabel {
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-left: 10px;
 }
