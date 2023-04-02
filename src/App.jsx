@@ -53,6 +53,8 @@ function execute() {
     const code = editor.getValue();
     clearConsole();
 
+    window.localStorage.setItem('code', code);
+
     let result = executePatternLanguageCode(code);
 
     for (let line of result.split('\n')) {
@@ -222,7 +224,7 @@ function App() {
 
         editor = monaco.editor.create(document.getElementById('container'), {
             theme: 'vs-dark',
-            value: "",
+            value: window.localStorage.getItem('code'),
             language: 'pattern_language',
             automaticLayout: true
         });
