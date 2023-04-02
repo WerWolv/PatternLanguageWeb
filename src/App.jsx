@@ -80,7 +80,7 @@ function getLogLevel(line) {
     else if (line.startsWith("[INFO]"))
         return "info";
     else if (line.startsWith("[WARN]"))
-        return "warn";
+        return "warning";
     else if (line.startsWith("[ERROR]"))
         return "error";
     else
@@ -95,8 +95,8 @@ function execute() {
 
     let result = executePatternLanguageCode(code);
 
-    for (let line of result[0].split('\n\xAA')) {
-        printToConsole(line.substring(0, line.length - 1), getLogLevel(line));
+    for (let line of result[0].split('\n\x01')) {
+        printToConsole(line, getLogLevel(line));
     }
 
     resultEditor.getModel().setValue(result[1]);

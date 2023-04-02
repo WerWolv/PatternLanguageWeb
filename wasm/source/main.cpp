@@ -52,30 +52,34 @@ extern "C" void setData(pl::u8 *data, size_t size) {
 }
 
 extern "C" void executePatternLanguageCode(const char *string) {
-    // Execute pattern file
-    if (!runtime.executeString(string)) {
-        if (const auto& error = runtime.getError(); error.has_value())
-            consoleResult += fmt::format("[ERROR]: {}:{} -> {}\n\xAA", error->line, error->column, error->message);
+    consoleResult.clear();
+
+    try {
+        (void)runtime.executeString(string);
+    } catch (const std::exception &e) {
+        consoleResult += fmt::format("[ERROR]: Exception thrown: {}\n", e.what());
+        consoleResult += '\x01';
     }
 
-    consoleResult.clear();
     for (const auto &[level, message] : runtime.getConsoleLog()) {
         switch (level) {
             using enum pl::core::LogConsole::Level;
 
             case Debug:
-                consoleResult += fmt::format("[DEBUG] {}\n\xAA", message);
+                consoleResult += fmt::format("[DEBUG] {}\n", message);
                 break;
             case Info:
-                consoleResult += fmt::format("[INFO]  {}\n\xAA", message);
+                consoleResult += fmt::format("[INFO]  {}\n", message);
                 break;
             case Warning:
-                consoleResult += fmt::format("[WARN]  {}\n\xAA", message);
+                consoleResult += fmt::format("[WARN]  {}\n", message);
                 break;
             case Error:
-                consoleResult += fmt::format("[ERROR] {}\n\xAA", message);
+                consoleResult += fmt::format("[ERROR] {}\n", message);
                 break;
         }
+
+        consoleResult += '\x01';
     }
 }
 
