@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build:app": "vite build",
-    "build:wasm": "docker run --rm -v %cd%:/src emscripten/emsdk ./wasm/build_wasm.sh",
+    "build:wasm": "docker run --rm -v $(pwd):/src emscripten/emsdk ./wasm/build_wasm.sh",
     "build": "npm run build:wasm && npm install && npm run build:app",
     "preview": "vite preview"
   },
