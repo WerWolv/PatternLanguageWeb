@@ -25,7 +25,7 @@ target_compile_options(plwasm.js PRIVATE -Wall -Wextra -Werror -Wno-unknown-prag
 target_include_directories(plwasm.js PUBLIC include)
 target_link_libraries(plwasm.js PUBLIC libpl libpl-gen fmt::fmt-header-only intervaltree)
 target_link_options(plwasm.js PRIVATE
-        -sEXPORTED_FUNCTIONS=_main,_executePatternLanguageCode,_getConsoleResult,_getFormattedResult,_malloc,_free,_setData,_initialize
+        -sEXPORTED_FUNCTIONS=_main,_executePatternLanguageCode,_getConsoleResult,_getFormattedResult,_getFormatters,_malloc,_free,_setData,_initialize
         -sEXPORTED_RUNTIME_METHODS=['ccall','allocateUTF8','UTF8ToString']
         -sEXPORT_ES6=1
         -sMODULARIZE=1

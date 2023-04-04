@@ -22,6 +22,19 @@ extern "C" const char *getConsoleResult() {
     return consoleResult.c_str();
 }
 
+extern "C" const char *getFormatters() {
+    static std::string formattersString;
+
+    if (formattersString.empty()) {
+        for (const auto &formatter : formatters) {
+            formattersString += formatter->getName();
+            formattersString += '\x01';
+        }
+    }
+
+    return formattersString.c_str();
+}
+
 extern "C" const char *getFormattedResult(const char *formatterName) {
     const auto formatterIter = std::find_if(formatters.begin(), formatters.end(),
                                           [&](const auto &formatter) {

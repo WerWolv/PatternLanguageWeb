@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 
 import * as monaco from 'monaco-editor'
@@ -9,7 +9,6 @@ import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 
 import Module from 'plwasm/plwasm.js'
-
 
 let PatternLanguage;
 let codeEditor;
@@ -49,12 +48,12 @@ function loadLocalFile() {
     input.click();
 }
 
-function executePatternLanguageCode(code) {
+function executePatternLanguageCode(code, output) {
     PatternLanguage._executePatternLanguageCode(PatternLanguage.allocateUTF8(code));
 
     return [
         PatternLanguage.UTF8ToString(PatternLanguage._getConsoleResult()),
-        PatternLanguage.UTF8ToString(PatternLanguage._getFormattedResult(PatternLanguage.allocateUTF8("json")))
+        PatternLanguage.UTF8ToString(PatternLanguage._getFormattedResult(PatternLanguage.allocateUTF8(output)))
     ];
 }
 
@@ -88,211 +87,227 @@ function getLogLevel(line) {
 function execute() {
     const code = codeEditor.getValue();
     clearConsole();
+    let outputType = document.getElementById('output_type').value;
 
     window.localStorage.setItem('code', code);
 
-    let result = executePatternLanguageCode(code);
+    let result = executePatternLanguageCode(code, outputType);
 
     for (let line of result[0].split('\n\x01')) {
         printToConsole(line, getLogLevel(line));
     }
 
+    monaco.editor.setModelLanguage(resultEditor.getModel(), outputType);
     resultEditor.getModel().setValue(result[1]);
 }
 
+let createdEditor = false;
 function App() {
-    var createdEditor = false;
+    const [formatters, setFormatters] = useState([]);
+
     useEffect(() => {
-        if (createdEditor) {
-            return;
+        async function loadFormatters() {
+            let module = await Module()
+            let result = module.UTF8ToString(module._getFormatters()).split("\x01");
+
+            result.pop();
+
+            setFormatters(result);
         }
-        createdEditor = true;
 
-        function definition() {
-            return {
-                defaultToken: 'invalid',
+        loadFormatters();
+    }, [])
 
-                keywords: [
-                    "using",
-                    "struct",
-                    "union",
-                    "enum",
-                    "bitfield",
-                    "be",
-                    "le",
-                    "fn",
-                    "return",
-                    "in",
-                    "out",
-                    "match",
-                    "continue",
-                    "break",
-                    "ref",
-                    "parent",
-                    "addressof",
-                    "sizeof",
-                    "namespace",
-                    "padding",
-                    "while",
-                    "for",
-                    "if",
-                    "else"
-                ],
+    useEffect(() => {
+        if (!createdEditor) {
+            createdEditor = true;
 
-                typeKeywords: [
-                    "u8", "u16", "u24", "u32", "u48", "u64", "u96", "u128",
-                    "s8", "s16", "s24", "s32", "s48", "s64", "s96", "s128",
-                    "float", "double", "bool", "char", "char16", "str", "auto"
-                ],
+            function definition() {
+                return {
+                    defaultToken: 'invalid',
 
-                operators: [
-                    '=', '>', '<', '!', '~', '?', ':', '@',
-                    '==', '<=', '>=', '!=', '&&', '||', '++', '--',
-                    '+', '-', '*', '/', '&', '|', '^', '%', '<<',
-                    '>>', '+=', '-=', '*=', '/=', '&=', '|=',
-                    '^=', '%=', '<<=', '>>='
-                ],
-
-                // we include these common regular expressions
-                symbols: /[=><!~?:&|+@$\-*\/^%]+/,
-                escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
-
-                // The main tokenizer for our languages
-                tokenizer: {
-                    root: [
-                        // identifiers and keywords
-                        [/[a-zA-Z_$][\w$]*/, {
-                            cases: {
-                                '@typeKeywords': 'keyword',
-                                '@keywords': 'keyword',
-                                '@default': 'identifier'
-                            }
-                        }],
-                        [/[a-zA-Z][\w$]*/, 'type.identifier'],  // to show class names nicely
-
-                        // whitespace
-                        {include: '@whitespace'},
-
-                        // delimiters and operators
-                        [/[{}()\[\]]/, '@brackets'],
-                        [/[<>](?!@symbols)/, '@brackets'],
-                        [/@symbols/, {
-                            cases: {
-                                '@operators': 'operator',
-                                '@default': ''
-                            }
-                        }],
-
-                        // Inclusion
-                        [/\s*#\s*include/, { token: 'keyword.directive.include', next: '@include' }],
-
-                        // Preprocessor directive
-                        [/\s*#\s*\w+/, 'keyword.directive'],
-
-                        // numbers
-                        [/\d*\.\d+([eE][\-+]?\d+)?[fFdD]?/, 'number.float'],
-                        [/0[xX][0-9a-fA-F_]*[0-9a-fA-F][Ll]?/, 'number.hex'],
-                        [/0[oO][0-7_]*[0-7][Ll]?/, 'number.octal'],
-                        [/0[bB][0-1_]*[0-1][Ll]?/, 'number.binary'],
-                        [/\d+[lL]?/, 'number'],
-
-                        // delimiter: after number because of .\d floats
-                        [/[;,.]/, 'delimiter'],
-
-                        // strings
-                        [/"([^"\\]|\\.)*$/, 'string.invalid'],  // non-teminated string
-                        [/"/, 'string', '@string'],
-
-                        // characters
-                        [/'[^\\']'/, 'string'],
-                        [/(')(@escapes)(')/, ['string', 'string.escape', 'string']],
-                        [/'/, 'string.invalid']
+                    keywords: [
+                        "using",
+                        "struct",
+                        "union",
+                        "enum",
+                        "bitfield",
+                        "be",
+                        "le",
+                        "fn",
+                        "return",
+                        "in",
+                        "out",
+                        "match",
+                        "continue",
+                        "break",
+                        "ref",
+                        "parent",
+                        "addressof",
+                        "sizeof",
+                        "namespace",
+                        "padding",
+                        "while",
+                        "for",
+                        "if",
+                        "else"
                     ],
 
-                    whitespace: [
-                        [/[ \t\r\n]+/, 'white'],
-                        [/\/\*/, 'comment', '@comment'],
-                        [/\/\+/, 'comment', '@comment'],
-                        [/\/\/.*$/, 'comment'],
+                    typeKeywords: [
+                        "u8", "u16", "u24", "u32", "u48", "u64", "u96", "u128",
+                        "s8", "s16", "s24", "s32", "s48", "s64", "s96", "s128",
+                        "float", "double", "bool", "char", "char16", "str", "auto"
                     ],
 
-                    comment: [
-                        [/[^\/*]+/, 'comment'],
-                        [/\/\+/, 'comment', '@push'],
-                        [/\/\*/, 'comment.invalid'],
-                        ["\\*/", 'comment', '@pop'],
-                        ["\\+/", 'comment', '@pop'],
-                        [/[\/*]/, 'comment']
+                    operators: [
+                        '=', '>', '<', '!', '~', '?', ':', '@',
+                        '==', '<=', '>=', '!=', '&&', '||', '++', '--',
+                        '+', '-', '*', '/', '&', '|', '^', '%', '<<',
+                        '>>', '+=', '-=', '*=', '/=', '&=', '|=',
+                        '^=', '%=', '<<=', '>>='
                     ],
 
-                    string: [
-                        [/[^\\"]+/, 'string'],
-                        [/@escapes/, 'string.escape'],
-                        [/\\./, 'string.escape.invalid'],
-                        [/"/, 'string', '@pop']
-                    ],
-                    include: [
-                        [
-                            /(\s*)(<)([^<>]*)(>)/,
-                            [
-                                '',
-                                'keyword.directive.include.begin',
-                                'string.include.identifier',
-                                { token: 'keyword.directive.include.end', next: '@pop' }
-                            ]
+                    // we include these common regular expressions
+                    symbols: /[=><!~?:&|+@$\-*\/^%]+/,
+                    escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
+
+                    // The main tokenizer for our languages
+                    tokenizer: {
+                        root: [
+                            // identifiers and keywords
+                            [/[a-zA-Z_$][\w$]*/, {
+                                cases: {
+                                    '@typeKeywords': 'keyword',
+                                    '@keywords': 'keyword',
+                                    '@default': 'identifier'
+                                }
+                            }],
+                            [/[a-zA-Z][\w$]*/, 'type.identifier'],  // to show class names nicely
+
+                            // whitespace
+                            {include: '@whitespace'},
+
+                            // delimiters and operators
+                            [/[{}()\[\]]/, '@brackets'],
+                            [/[<>](?!@symbols)/, '@brackets'],
+                            [/@symbols/, {
+                                cases: {
+                                    '@operators': 'operator',
+                                    '@default': ''
+                                }
+                            }],
+
+                            // Inclusion
+                            [/\s*#\s*include/, {token: 'keyword.directive.include', next: '@include'}],
+
+                            // Preprocessor directive
+                            [/\s*#\s*\w+/, 'keyword.directive'],
+
+                            // numbers
+                            [/\d*\.\d+([eE][\-+]?\d+)?[fFdD]?/, 'number.float'],
+                            [/0[xX][0-9a-fA-F_]*[0-9a-fA-F][Ll]?/, 'number.hex'],
+                            [/0[oO][0-7_]*[0-7][Ll]?/, 'number.octal'],
+                            [/0[bB][0-1_]*[0-1][Ll]?/, 'number.binary'],
+                            [/\d+[lL]?/, 'number'],
+
+                            // delimiter: after number because of .\d floats
+                            [/[;,.]/, 'delimiter'],
+
+                            // strings
+                            [/"([^"\\]|\\.)*$/, 'string.invalid'],  // non-teminated string
+                            [/"/, 'string', '@string'],
+
+                            // characters
+                            [/'[^\\']'/, 'string'],
+                            [/(')(@escapes)(')/, ['string', 'string.escape', 'string']],
+                            [/'/, 'string.invalid']
                         ],
-                        [
-                            /(\s*)(")([^"]*)(")/,
+
+                        whitespace: [
+                            [/[ \t\r\n]+/, 'white'],
+                            [/\/\*/, 'comment', '@comment'],
+                            [/\/\+/, 'comment', '@comment'],
+                            [/\/\/.*$/, 'comment'],
+                        ],
+
+                        comment: [
+                            [/[^\/*]+/, 'comment'],
+                            [/\/\+/, 'comment', '@push'],
+                            [/\/\*/, 'comment.invalid'],
+                            ["\\*/", 'comment', '@pop'],
+                            ["\\+/", 'comment', '@pop'],
+                            [/[\/*]/, 'comment']
+                        ],
+
+                        string: [
+                            [/[^\\"]+/, 'string'],
+                            [/@escapes/, 'string.escape'],
+                            [/\\./, 'string.escape.invalid'],
+                            [/"/, 'string', '@pop']
+                        ],
+                        include: [
                             [
-                                '',
-                                'keyword.directive.include.begin',
-                                'string.include.identifier',
-                                { token: 'keyword.directive.include.end', next: '@pop' }
+                                /(\s*)(<)([^<>]*)(>)/,
+                                [
+                                    '',
+                                    'keyword.directive.include.begin',
+                                    'string.include.identifier',
+                                    {token: 'keyword.directive.include.end', next: '@pop'}
+                                ]
+                            ],
+                            [
+                                /(\s*)(")([^"]*)(")/,
+                                [
+                                    '',
+                                    'keyword.directive.include.begin',
+                                    'string.include.identifier',
+                                    {token: 'keyword.directive.include.end', next: '@pop'}
+                                ]
                             ]
                         ]
-                    ]
-                }
-            };
-        }
+                    }
+                };
+            }
 
-        monaco.languages.register({
-            id: 'pattern_language'
-        });
-        monaco.languages.setMonarchTokensProvider('pattern_language', definition());
+            monaco.languages.register({
+                id: 'pattern_language'
+            });
+            monaco.languages.setMonarchTokensProvider('pattern_language', definition());
 
-        codeEditor = monaco.editor.create(document.getElementById('editorContainer'), {
-            theme: 'vs-dark',
-            value: window.localStorage.getItem('code') || '// Enter your Pattern Language code here\n\n// Afterwards select a binary file to parse below using the "Load File"\n// and hit "Execute" to turn run the pattern.',
-            language: 'pattern_language',
-            automaticLayout: true
-        });
+            codeEditor = monaco.editor.create(document.getElementById('editorContainer'), {
+                theme: 'vs-dark',
+                value: window.localStorage.getItem('code') || '// Enter your Pattern Language code here\n\n// Afterwards select a binary file to parse below using the "Load File"\n// and hit "Execute" to turn run the pattern.',
+                language: 'pattern_language',
+                automaticLayout: true
+            });
 
-        resultEditor = monaco.editor.create(document.getElementById('resultContainer'), {
-            theme: 'vs-dark',
-            value: "",
-            language: 'json',
-            automaticLayout: true,
-            readOnly: true
-        });
+            resultEditor = monaco.editor.create(document.getElementById('resultContainer'), {
+                theme: 'vs-dark',
+                value: "",
+                language: 'json',
+                automaticLayout: true,
+                readOnly: true
+            });
 
-        self.MonacoEnvironment = {
-            getWorker(_, label) {
-                if (label === 'json') {
-                    return new jsonWorker()
+            self.MonacoEnvironment = {
+                getWorker(_, label) {
+                    if (label === 'json') {
+                        return new jsonWorker()
+                    }
+                    if (label === 'css' || label === 'scss' || label === 'less') {
+                        return new cssWorker()
+                    }
+                    if (label === 'html' || label === 'handlebars' || label === 'razor') {
+                        return new htmlWorker()
+                    }
+                    if (label === 'typescript' || label === 'javascript') {
+                        return new tsWorker()
+                    }
+                    return new editorWorker()
                 }
-                if (label === 'css' || label === 'scss' || label === 'less') {
-                    return new cssWorker()
-                }
-                if (label === 'html' || label === 'handlebars' || label === 'razor') {
-                    return new htmlWorker()
-                }
-                if (label === 'typescript' || label === 'javascript') {
-                    return new tsWorker()
-                }
-                return new editorWorker()
             }
         }
-    }, []);
+    });
 
   return (
       <div className="App">
@@ -305,6 +320,11 @@ function App() {
           </div>
           <div style={{ height: '5vh', width: '100vw',  display: "flex", flexDirection: "row" }} className={'buttons'}>
               <button onClick={execute}>Execute</button>
+              <select id={'output_type'}>
+                  {
+                        formatters.map(value => <option key={value} value={value}>{value.toUpperCase()}</option>)
+                  }
+              </select>
               <button onClick={loadLocalFile}>Load File</button>
               <label id={'fileLabel'}>No file selected</label>
               <input type="file" id="input" style={{ display: "none" }}/>
