@@ -2,6 +2,11 @@ name: Build and Deploy
 on:
   push:
   workflow_dispatch:
+  repository_dispatch:
+    types: [rebuild_wasm]
+  schedule:
+    - cron: 0 2 * * *
+
 
 permissions:
   contents: write
