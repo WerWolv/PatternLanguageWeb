@@ -67,14 +67,7 @@ extern "C" void setData(pl::u8 *data, size_t size) {
 extern "C" void executePatternLanguageCode(const char *string) {
     consoleResult.clear();
 
-    try {
-        (void)runtime.executeString(string);
-    } catch (const std::exception &e) {
-        consoleResult += fmt::format("[ERROR]: Exception thrown: {}\n", e.what());
-        consoleResult += '\x01';
-    }
-
-    for (const auto &[level, message] : runtime.getConsoleLog()) {
+    runtime.setLogCallback([](auto level, const std::string &message) {
         switch (level) {
             using enum pl::core::LogConsole::Level;
 
@@ -92,6 +85,13 @@ extern "C" void executePatternLanguageCode(const char *string) {
                 break;
         }
 
+        consoleResult += '\x01';
+    });
+
+    try {
+        (void)runtime.executeString(string);
+    } catch (const std::exception &e) {
+        consoleResult += fmt::format("[ERROR]: Exception thrown: {}\n", e.what());
         consoleResult += '\x01';
     }
 }
