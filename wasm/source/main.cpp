@@ -47,9 +47,17 @@ extern "C" const char *getFormattedResult(const char *formatterName) {
     auto &formatter = *formatterIter;
 
     formatter->enableMetaInformation(true);
-    auto result = formatter->format(runtime);
 
     formattedResult.clear();
+
+    std::vector<pl::u8> result;
+    try {
+        result = formatter->format(runtime);
+    } catch (const std::exception &e) {
+        auto message = fmt::format("Exception thrown: {}", e.what());
+        std::copy(message.begin(), message.end(), std::back_inserter(result));
+    }
+
     formattedResult.reserve(result.size());
     std::move(result.begin(), result.end(), std::back_inserter(formattedResult));
 
