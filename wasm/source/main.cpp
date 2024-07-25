@@ -89,7 +89,7 @@ extern "C" void executePatternLanguageCode(const char *string) {
     });
 
     try {
-        (void)runtime.executeString(string);
+        (void)runtime.executeString(string, "<Source Code>");
     } catch (const std::exception &e) {
         consoleResult += fmt::format("[ERROR]: Exception thrown: {}\n", e.what());
         consoleResult += '\x01';
